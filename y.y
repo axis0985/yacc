@@ -1,73 +1,76 @@
 %{
 	#include<stdio.h>
 	#include<string.h>
+	#include <string>
+	#include <map>
+	using namespace std;
 	void yyerror(const char *message);
-	int error = -1;
-	extern int col;
+	int yylex();
+	struct YYT {
+		map<string , int > chem;
+		string str;
+		int ival;
+	};
+	#define YYSTYPE YYT
 %}
-%union {
-    int matrix[2];
-    int ival;
-}
-%token<ival> INT
-%token<ival> PLUS
-%token<ival> MINUS
-%token<ival> MULT
-%type<matrix> matrix
-%type<matrix> expr
-%left PLUS MINUS
-%left MULT
-
+%token<str> Chemical
+%token<ival> Number
+%type<chem> expr
+%type<chem> compound
 %%
-input   : expr 
-                { 
-					if(error == -1){
-							printf("Accepted"); 
-					}else {
-						// for( int i= 1 ; i < error ; i++)
-						// 	printf(" ");	
-						printf("Semantic error on col %d\n",error);
-					}
-                }
+input   : expr '-' '>' expr 
+			{
+				for(map<string, int>::iterator it = $4.begin(); it != $4.end(); it++)
+				{
+					$1[it->first] -= it->second;
+				}
+
+				for(map<string, int>::iterator it = $1.begin(); it != $1.end(); it++)
+				{
+					if(it->second == 0) continue;
+					printf("%s %d\n",it->first.c_str(),it->second);
+				}
+			}
         ;
-expr    :  expr MULT expr  
-                        { 
-                                if($1[1] == $3[0]) 
-                                { 
-                                        $$[0] = $1[0]; $$[1] = $3[1]; 
-                                }else {
-									if(error == -1)
-                                        error = $2;
-                                }
-                        }
-        |  expr PLUS expr  
-                        { 
-                                if($1[0] == $3[0] && $1[1] == $3[1]) {
-                                        $$[0] = $3[0]; $$[1] = $3[1]; 
-                                }else {
-									if(error == -1)
-                                        error = $2;
-                                }
-                        }
-        |  expr MINUS expr  
-                        { 
-                                if($1[0] == $3[0] && $1[1] == $3[1]) 
-                                {
-                                        $$[0] = $3[0]; $$[1] = $3[1]; 
-                                }else{
-									if(error == -1)
-                                        error = $2;
-                                }
-                        }
-        |  '(' expr ')' { $$[0] = $2[0]; $$[1] = $2[1]; }
-        |  expr '^' 'T' { int tmp = $$[1]; $$[1] = $$[0]; $$[0] = tmp; }
-        |  matrix  {$$[0] = $1[0]; $$[1] = $1[1];}
-        ;
-matrix  :  '[' INT ',' INT ']' { $$[0] = $2; $$[1] = $4; }
-        ;
+expr    :expr '+' expr 
+			{
+				for(map<string, int>::iterator it = $3.begin(); it != $3.end(); it++) {
+					$1[it->first] += it->second;
+				}
+				$$ = $1;
+			}
+		| Number compound  
+			{
+				for(map<string, int>::iterator it = $2.begin(); it != $2.end(); it++) {
+					it->second *= $1;
+				}
+				$$ = $2;
+			}
+		| compound
+			{
+				$$ = $1;
+			}
+		; 
+compound : Chemical { $$[$1] += 1;}
+		 | compound Number 
+			{
+				for(map<string, int>::iterator it = $1.begin(); it != $1.end(); it++) {
+					it->second *= $2;
+				}
+				$$ = $1;
+			}
+		 | compound compound 
+		 	{
+				for(map<string, int>::iterator it = $2.begin(); it != $2.end(); it++) {
+					$1[it->first] += it->second;
+				}
+				$$ = $1;
+			}
+		 | '(' compound ')' {$$ = $2;}
+		 ;
 %%
 void yyerror(const char *message){
-	fprintf(stderr, "%s\n", message);
+	printf("Invalid format\n");
 }
 int main(int argc, char *argv[]){
 	yyparse();

@@ -1,16 +1,20 @@
 %{
+	#include <string>
+	#include <map>
+	struct YYT {
+		std::map<std::string , int > m;
+		std::string str;
+		int ival;
+	};
+	#define YYSTYPE YYT
 	#include "y.tab.h"
-	#include <string.h>
-	int col = 0;
 %}
 %%
 \n						{return(0); /*EOF*/}
-[ \t]+					{col++;}
-[0-9]+					{ col+=strlen(yytext);yylval.ival = atoi(yytext); return(INT); }
-","|"("|")"|"["|"]"		{col++;return(yytext[0]); }
-[T\^]					{col++;return(yytext[0]); }
-"+"						{col++;yylval.ival = col;return(PLUS); }
-"-"						{col++;yylval.ival = col;return(MINUS); }
-"*"						{col++;yylval.ival = col;return(MULT); }
-.						{col++;return(yytext[0]); }
+[ \t]+					{;}
+[A-Z][a-z]*				{yylval.str = yytext; return(Chemical);}
+[0-9]+					{yylval.ival = atoi(yytext); return(Number); }
+"+"|"("|")"				{return(yytext[0]); }
+"-"|">"					{return(yytext[0]);}
+.						{return(yytext[0]); }
 %%
